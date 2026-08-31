@@ -19,7 +19,6 @@ export default function QuickAddModal({ quickAdd, onClose, water, meals, exercis
   // meal state
   const [category, setCategory] = useState('Breakfast')
   const [name, setName] = useState('')
-  const [calories, setCalories] = useState('')
   // exercise state — pre-fill with today's gym split
   const [type, setType] = useState(() => getGymSplitForDate(today) || 'Gym')
   const [duration, setDuration] = useState('')
@@ -35,7 +34,7 @@ export default function QuickAddModal({ quickAdd, onClose, water, meals, exercis
   })
 
   const reset = () => {
-    setName(''); setCalories(''); setDuration(''); setNotes(''); setWeightVal('')
+    setName(''); setDuration(''); setNotes(''); setWeightVal('')
   }
 
   // Parse natural language: "500ml water", "lunch 400 cal", "gym 45 min", "weight 70kg"
@@ -70,7 +69,7 @@ export default function QuickAddModal({ quickAdd, onClose, water, meals, exercis
     if (quickAdd === 'water') {
       await water.add(settings.waterGoalMl / 4 || 250)
     } else if (quickAdd === 'meal') {
-      if (name.trim()) await meals.add({ date: today, category, name: name.trim(), calories: calories || null })
+      if (name.trim()) await meals.add({ date: today, category, name: name.trim() })
     } else if (quickAdd === 'exercise') {
       if (duration) await exercise.add({ date: today, type, durationMin: duration, notes })
     } else if (quickAdd === 'weight') {
@@ -148,9 +147,6 @@ export default function QuickAddModal({ quickAdd, onClose, water, meals, exercis
             ))}
           </div>
           <input className={inputCls} placeholder="Kya khaya? (e.g. Dal chawal)" value={name} onChange={(e) => setName(e.target.value)} />
-          <div className="flex gap-2">
-            <input className={inputCls} placeholder="Calories (optional)" type="number" inputMode="numeric" value={calories} onChange={(e) => setCalories(e.target.value)} />
-          </div>
         </div>
       )}
 

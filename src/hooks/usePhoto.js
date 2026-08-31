@@ -15,6 +15,8 @@ export function usePhoto() {
       if (!active) return
       setPhotos(all)
       setLoading(false)
+    }).catch(() => {
+      if (active) setLoading(false)
     })
     return () => {
       active = false
@@ -29,12 +31,18 @@ export function usePhoto() {
   const add = useCallback(
     async (blob, date = todayKey()) => {
       const existing = photos.find((p) => p.date === date)
-      if (existing) {
-        await put('photos', { ...existing, blob, createdAt: Date.now() })
-      } else {
-        await put('photos', { date, blob, createdAt: Date.now() })
+      try {
+        if (existing) {
+          await put('photos', { ...existing, blob, createdAt: Date.now() })
+        } else {
+          await put('photos', { date, blob, createdAt: Date.now() })
+        }
+        await refresh()
+        return true
+      } catch (err) {
+        console.error('Photo save failed:', err)
+        throw err
       }
-      await refresh()
     },
     [photos, refresh]
   )

@@ -35,18 +35,28 @@ export default function Exercise() {
     weeks.push(row)
   }
 
+  const [msg, setMsg] = useState('')
+
   async function submit() {
-    if (!duration) return
     if (navigator.vibrate) navigator.vibrate(5)
-    await add({ date: today, type, durationMin: duration, notes })
-    setDuration('')
-    setNotes('')
+    const dur = duration ? Number(duration) : 30
+    try {
+      await add({ date: today, type, durationMin: dur, notes })
+      setMsg('✅ Workout saved!')
+      setDuration('')
+      setNotes('')
+      setTimeout(() => setMsg(''), 2000)
+    } catch (err) {
+      setMsg('❌ Save failed: ' + err.message)
+    }
   }
 
   return (
     <div className="px-4 py-5 page-enter">
       <h1 className="mb-1 text-2xl font-extrabold">Exercise 💪</h1>
       <p className="mb-4 text-sm opacity-60">Har din thoda workout — streak banaye rakho.</p>
+
+      {msg && <div className="mb-4 card rounded-xl p-3 text-sm">{msg}</div>}
 
       {/* habit grid */}
       <section className="mb-5 card card-enter rounded-2xl p-3">
@@ -84,7 +94,7 @@ export default function Exercise() {
           ))}
         </div>
         <div className="flex gap-2">
-          <input className={inputCls + ' flex-1'} placeholder="Duration (min)" type="number" inputMode="numeric" value={duration} onChange={(e) => setDuration(e.target.value)} />
+          <input className={inputCls + ' flex-1'} placeholder="Duration (default 30 min)" type="number" inputMode="numeric" value={duration} onChange={(e) => setDuration(e.target.value)} />
         </div>
         <input className={inputCls + ' mt-2'} placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
         <button onClick={submit} className="mt-2 w-full rounded-xl bg-flame-500 py-2.5 font-bold text-white active:scale-95 transition-transform">

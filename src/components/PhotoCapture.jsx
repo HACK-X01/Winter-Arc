@@ -11,20 +11,27 @@ export default function PhotoCapture({ dateKey, onClose, onSaved }) {
   const { add } = usePhoto()
   const [preview, setPreview] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
   const inputRef = useRef(null)
   const isToday = dateKey === todayKey()
 
   async function handleFile(e) {
     const file = e.target.files?.[0]
     if (!file) return
-    const blob = await compressImage(file)
-    setPreview(URL.createObjectURL(blob))
-    await add(blob, dateKey)
-    setBusy(true)
-    // give the tiny delay for state settle before closing
-    setTimeout(() => {
-      onSaved()
-    }, 400)
+    setError('')
+    try {
+      setBusy(true)
+      const blob = await compressImage(file)
+      setPreview(URL.createObjectURL(blob))
+      await add(blob, dateKey)
+      setTimeout(() => {
+        onSaved()
+      }, 600)
+    } catch (err) {
+      console.error('Photo save failed:', err)
+      setError('❌ Photo save nahi ho payi — storage full ho sakta hai. Browser data clear karo aur try again.')
+      setBusy(false)
+    }
   }
 
   function openPicker() {
@@ -45,28 +52,26 @@ export default function PhotoCapture({ dateKey, onClose, onSaved }) {
         ) : (
           <button
             onClick={openPicker}
-            className="flex w-full flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-white/20 py-14 text-white/60"
+            disabled={busy}
+            className="flex w-full flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-white/20 py-14 text-white/60 disabled:opacity-50"
           >
-            <span className="text-4xl">📸</span>
-            <span className="font-medium">Camera / Photo chuno</span>
+            <span className="text-4xl">{busy ? '⏳' : '📸'}</span>
+            <span className="font-medium">{busy ? 'Saving...' : 'Camera / Photo chuno'}</span>
             <span className="text-xs opacity-50">Mobile par camera khulega, computer par file picker</span>
           </button>
         )}
 
-        {!preview && (
+        {!preview && !busy && (
           <button onClick={openPicker} className="w-full rounded-xl bg-flame-500 py-3 font-bold text-white">
             Photo lo
           </button>
         )}
 
-        {busy && !preview && (
+        {error && <p className="text-center text-xs text-red-400">{error}</p>}
+        {preview && !error && (
           <p className="text-center text-sm text-flame-400">✅ Photo save ho gayi!</p>
-        )}
-        {preview && (
-          <p className="text-center text-sm text-flame-400">✅ Photo save ho gayi! Bahar nikl ke dekho.</p>
         )}
       </div>
     </Modal>
   )
 }
-
