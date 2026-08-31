@@ -207,5 +207,10 @@ export async function registerPeriodicSync() {
 
 export function supportsPeriodicSync() {
   if (!('serviceWorker' in navigator)) return false
-  return 'periodicSync' in (navigator.serviceWorker.constructor && {})
+  // periodicSync lives on ServiceWorkerRegistration.prototype (Chrome/Android only)
+  try {
+    return 'periodicSync' in ServiceWorkerRegistration.prototype
+  } catch {
+    return false
+  }
 }

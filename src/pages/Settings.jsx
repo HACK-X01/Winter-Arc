@@ -61,9 +61,14 @@ export default function Settings() {
           </div>
           <span className="text-xs opacity-50">{notif}</span>
         </button>
-        {!supportsBgSync && (
-          <p className="mt-2 text-xs text-amber-400/80">
-            ⚠️ Ye browser background sync support nahi karta. Sabse reliable reminders ke liye app ko background me khula rakho ya din me kuch baar check karo.
+        {notifyOn && !supportsBgSync && (
+          <p className="mt-2 text-xs text-white/40 light:text-black/50">
+            💡 Background reminders Chrome (Android) pe best kaam karte hain. Baaki browsers me app open rehne tak reminders chalenge — reliable hai jab tab active ho.
+          </p>
+        )}
+        {notifyOn && supportsBgSync && (
+          <p className="mt-2 text-xs text-flame-400/70">
+            ✅ Background sync supported — reminders background me bhi chalenge!
           </p>
         )}
       </Section>
