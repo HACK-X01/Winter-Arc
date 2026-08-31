@@ -7,6 +7,8 @@ import { useSettings } from '../hooks/useSettings'
 import { useWater } from '../hooks/useWater'
 import { useMeals } from '../hooks/useMeals'
 import { useExercise } from '../hooks/useExercise'
+import { useWeight } from '../hooks/useWeight'
+import { usePhoto } from '../hooks/usePhoto'
 import { useReminders } from '../hooks/useReminders'
 import { useDailyCompletion } from '../hooks/useDailyCompletion'
 import { buildTimelineItems } from '../utils/notifications'
@@ -51,6 +53,8 @@ export default function Home() {
   const water = useWater(today)
   const meals = useMeals(today)
   const exercise = useExercise(today)
+  const weight = useWeight()
+  const photo = usePhoto()
   const { reminders } = useReminders()
   const completion = useDailyCompletion()
 
@@ -67,10 +71,52 @@ export default function Home() {
     [reminders, today]
   )
 
-  const doneSet = completion.byDate[today] || {}
+  // Merge manual checkboxes with auto-detected completion from tracker data.
+  // Logging a meal/workout/photo/weight auto-checks the matching reminder.
+  const doneSet = useMemo(() => {
+    const base = { ...(completion.byDate[today] || {}) }
+
+    // Meal reminder -> auto-check when its category is logged
+    const MEAL_REMINDER_MAP = {
+      'Pre-workout Meal': 'Breakfast',
+      'Post-workout Meal': 'Breakfast',
+      'Mid-meal / Snack': 'Snacks',
+      'Lunch': 'Lunch',
+      'Dinner': 'Dinner',
+    }
+    const loggedCategories = new Set(meals.meals.map((m) => m.category))
+
+    // Tracker data availability for today
+    const exerciseLogged = exercise.exercises.length > 0
+    const photoLogged = !!photo.getForDate(today)
+    const weightLogged = weight.logs.some((l) => l.date === today)
+
+    const EXERCISE_REMINDERS = new Set(['Gym Workout', 'Log Workout'])
+
+    for (const r of applicableToday) {
+      const cat = MEAL_REMINDER_MAP[r.name]
+      if (cat && loggedCategories.has(cat)) {
+        base[r.id] = true
+      } else if (EXERCISE_REMINDERS.has(r.name) && exerciseLogged) {
+        base[r.id] = true
+      } else if (r.name === 'Daily Progress Photo' && photoLogged) {
+        base[r.id] = true
+      } else if (r.name === 'Weekly Weigh-in' && weightLogged) {
+        base[r.id] = true
+      }
+    }
+    return base
+  }, [completion.byDate, today, applicableToday, meals.meals, exercise.exercises, photo, weight.logs])
+
   const choresDone = applicableToday.filter((r) => doneSet[r.id]).length
   const choresTotal = applicableToday.length
   const allChoresDone = choresTotal > 0 && choresDone === choresTotal
+
+  // Water: sip = goal / number of daily checkpoints, so every notification
+  // tap logs one sip and the daily goal fills exactly by the last one.
+  const waterReminder = reminders.find((r) => r.name === 'Drink Water')
+  const numSips = timeline.filter((t) => String(t.key).startsWith(waterReminder?.id + '-')).length || 16
+  const sipMl = settings ? Math.round(settings.waterGoalMl / numSips) : 250
 
   const waterPct = settings?.waterGoalMl ? Math.round((water.totalMl / settings.waterGoalMl) * 100) : 0
   const exerciseDone = exercise.exercises.length > 0
@@ -90,6 +136,10 @@ export default function Home() {
 
   const toggleChore = (rid) => {
     const next = !doneSet[rid]
+    // Checking a water checkpoint = taking one sip -> log it toward the goal
+    if (next && waterReminder && rid.startsWith(waterReminder.id + '-')) {
+      water.add(sipMl)
+    }
     completion.setDone(today, rid, next)
     if (next && choresDone + 1 === choresTotal) {
       setCelebrate(true)
