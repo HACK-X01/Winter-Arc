@@ -74,16 +74,12 @@ export default function Home() {
   // Merge manual checkboxes with auto-detected completion from tracker data.
   // Logging a meal/workout/photo/weight auto-checks the matching reminder.
   const doneSet = useMemo(() => {
-    const base = { ...(completion.byDate[today] || {}) }
+    const raw = completion.byDate[today] || {}
+    // Normalize keys to string so numeric reminderIds from autoIncrement
+    // always match regardless of how IndexedDB round-trips them.
+    const base = {}
+    for (const k of Object.keys(raw)) base[String(k)] = raw[k]
 
-    // Meal reminder -> auto-check when its category is logged
-    const MEAL_REMINDER_MAP = {
-      'Pre-workout Meal': 'Breakfast',
-      'Post-workout Meal': 'Breakfast',
-      'Mid-meal / Snack': 'Snacks',
-      'Lunch': 'Lunch',
-      'Dinner': 'Dinner',
-    }
     const loggedCategories = new Set(meals.meals.map((m) => m.category))
 
     // Tracker data availability for today
@@ -91,18 +87,24 @@ export default function Home() {
     const photoLogged = !!photo.getForDate(today)
     const weightLogged = weight.logs.some((l) => l.date === today)
 
-    const EXERCISE_REMINDERS = new Set(['Gym Workout', 'Log Workout'])
-
     for (const r of applicableToday) {
-      const cat = MEAL_REMINDER_MAP[r.name]
-      if (cat && loggedCategories.has(cat)) {
-        base[r.id] = true
-      } else if (EXERCISE_REMINDERS.has(r.name) && exerciseLogged) {
-        base[r.id] = true
-      } else if (r.name === 'Daily Progress Photo' && photoLogged) {
-        base[r.id] = true
-      } else if (r.name === 'Weekly Weigh-in' && weightLogged) {
-        base[r.id] = true
+      const name = (r.name || '').toLowerCase()
+      // Meal reminders — keyword match so slight name differences still work
+      if ((name.includes('pre-workout') || name.includes('post-workout')) && name.includes('meal')) {
+        if (loggedCategories.has('Breakfast')) base[String(r.id)] = true
+      } else if (name.includes('mid-meal') || name.includes('snack')) {
+        if (loggedCategories.has('Snacks')) base[String(r.id)] = true
+      } else if (name === 'lunch') {
+        if (loggedCategories.has('Lunch')) base[String(r.id)] = true
+      } else if (name === 'dinner') {
+        if (loggedCategories.has('Dinner')) base[String(r.id)] = true
+      } else if (name.includes('gym') || (name.includes('log') && name.includes('workout'))) {
+        // Exercise reminders
+        if (exerciseLogged) base[String(r.id)] = true
+      } else if (name.includes('progress photo') || name.includes('daily') && name.includes('photo')) {
+        if (photoLogged) base[String(r.id)] = true
+      } else if (name.includes('weigh') && (name.includes('weekly') || name.includes('in'))) {
+        if (weightLogged) base[String(r.id)] = true
       }
     }
     return base
@@ -135,12 +137,13 @@ export default function Home() {
   const curStreak = currentStreak(fullyCompletedDays, today)
 
   const toggleChore = (rid) => {
-    const next = !doneSet[rid]
+    const key = String(rid)
+    const next = !doneSet[key]
     // Checking a water checkpoint = taking one sip -> log it toward the goal
-    if (next && waterReminder && rid.startsWith(waterReminder.id + '-')) {
+    if (next && waterReminder && key.startsWith(waterReminder.id + '-')) {
       water.add(sipMl)
     }
-    completion.setDone(today, rid, next)
+    completion.setDone(today, key, next)
     if (next && choresDone + 1 === choresTotal) {
       setCelebrate(true)
       setTimeout(() => setCelebrate(false), 2600)
@@ -248,7 +251,7 @@ export default function Home() {
         </div>
         <DayTimeline
           items={timeline}
-          isDone={(key) => !!doneSet[key]}
+          isDone={(key) => !!doneSet[String(key)]}
           onToggle={toggleChore}
         />
       </section>

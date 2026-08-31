@@ -184,7 +184,15 @@ export default function ManageReminders() {
 
           <input className={inputCls} placeholder="Custom message (optional, e.g. 'Paani pe lo!')" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} />
         </div>
-        <button onClick={submit} className="mt-4 flex w-full items-center justify-center gap-1 rounded-xl bg-flame-500 py-3 font-bold text-white active:scale-95 transition-transform">
+        <button
+          onClick={submit}
+          disabled={!form.name.trim()}
+          className={`mt-4 flex w-full items-center justify-center gap-1 rounded-xl py-3 font-bold transition-transform ${
+            form.name.trim()
+              ? 'bg-flame-500 text-white active:scale-95'
+              : 'bg-white/10 text-white/30 cursor-not-allowed'
+          }`}
+        >
           <Check size={18} /> Save reminder
         </button>
       </Modal>
